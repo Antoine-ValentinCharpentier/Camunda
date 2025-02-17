@@ -8,9 +8,24 @@ services:
       - "9700:9600"
       - "7088:8080"
     environment:
+      - ZEEBE_BROKER_GATEWAY_SECURITY_AUTHENTICATION_MODE=${ZEEBE_AUTHENTICATION_MODE}
       - ZEEBE_BROKER_GATEWAY_SECURITY_AUTHENTICATION_IDENTITY_ISSUERBACKENDURL=http://keycloak:17080/auth/realms/camunda-platform
+      - ZEEBE_BROKER_GATEWAY_SECURITY_AUTHENTICATION_IDENTITY_AUDIENCE=zeebe-api
       - ZEEBE_BROKER_GATEWAY_SECURITY_AUTHENTICATION_IDENTITY_BASEURL=http://identity:7084
+      - ZEEBE_BROKER_GATEWAY_MULTITENANCY_ENABLED=${MULTI_TENANCY_ENABLED}
+      - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_CLASSNAME=io.camunda.zeebe.exporter.ElasticsearchExporter
       - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_URL=http://elasticsearch:7200
+      - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_BULK_SIZE=1
+      - ZEEBE_BROKER_DATA_DISKUSAGECOMMANDWATERMARK=0.998
+      - ZEEBE_BROKER_DATA_DISKUSAGEREPLICATIONWATERMARK=0.999
+      - "JAVA_TOOL_OPTIONS=-Xms512m -Xmx512m"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 10s bash -c ':> /dev/tcp/127.0.0.1/9600' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     volumes:
       - zeebe:/usr/local/zeebe/data
     networks:
@@ -29,13 +44,32 @@ services:
       - "7081:8080"
     environment:
       - CAMUNDA_OPERATE_ZEEBE_GATEWAYADDRESS=zeebe:27500
+      - ZEEBE_CLIENT_ID=${ZEEBE_CLIENT_ID}
+      - ZEEBE_CLIENT_SECRET=${ZEEBE_CLIENT_SECRET}
+      - ZEEBE_TOKEN_AUDIENCE=zeebe-api
+      - ZEEBE_AUTHORIZATION_SERVER_URL=http://keycloak:17080/auth/realms/camunda-platform/protocol/openid-connect/token
       - CAMUNDA_OPERATE_ELASTICSEARCH_URL=http://elasticsearch:7200
       - CAMUNDA_OPERATE_ZEEBEELASTICSEARCH_URL=http://elasticsearch:7200
+      - SPRING_PROFILES_ACTIVE=identity-auth
       - CAMUNDA_OPERATE_IDENTITY_BASEURL=http://identity:7084
       - CAMUNDA_OPERATE_IDENTITY_ISSUER_URL=http://${KEYCLOAK_HOST}:17080/auth/realms/camunda-platform
       - CAMUNDA_OPERATE_IDENTITY_ISSUER_BACKEND_URL=http://keycloak:17080/auth/realms/camunda-platform
+      - CAMUNDA_OPERATE_IDENTITY_CLIENTID=operate
+      - CAMUNDA_OPERATE_IDENTITY_CLIENTSECRET=XALaRPl5qwTEItdwCMiPS62nVpKs7dL7
+      - CAMUNDA_OPERATE_IDENTITY_AUDIENCE=operate-api
+      - CAMUNDA_OPERATE_MULTITENANCY_ENABLED=${MULTI_TENANCY_ENABLED}
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:17080/auth/realms/camunda-platform
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:17080/auth/realms/camunda-platform/protocol/openid-connect/certs
+      - CAMUNDA_OPERATE_IDENTITY_RESOURCEPERMISSIONSENABLED=${RESOURCE_AUTHORIZATIONS_ENABLED}
+      - management.endpoints.web.exposure.include=health
+      - management.endpoint.health.probes.enabled=true
+      - ZEEBE_CLIENT_CONFIG_PATH=/tmp/zeebe_auth_cache
+    healthcheck:
+      test: ["CMD-SHELL", "wget -O - -q 'http://localhost:9600/actuator/health/readiness'"]
+      interval: 30s
+      timeout: 1s
+      retries: 5
+      start_period: 30s
     volumes:
       - operate_tmp:/tmp
     networks:
@@ -56,13 +90,32 @@ services:
     environment:
       - CAMUNDA_TASKLIST_ZEEBE_GATEWAYADDRESS=zeebe:27500
       - CAMUNDA_TASKLIST_ZEEBE_RESTADDRESS=http://zeebe:7088
+      - ZEEBE_CLIENT_ID=${ZEEBE_CLIENT_ID}
+      - ZEEBE_CLIENT_SECRET=${ZEEBE_CLIENT_SECRET}
+      - ZEEBE_CLIENT_CONFIG_PATH=/tmp/zeebe_auth_cache
+      - ZEEBE_TOKEN_AUDIENCE=zeebe-api
+      - ZEEBE_AUTHORIZATION_SERVER_URL=http://keycloak:17080/auth/realms/camunda-platform/protocol/openid-connect/token
       - CAMUNDA_TASKLIST_ELASTICSEARCH_URL=http://elasticsearch:7200
       - CAMUNDA_TASKLIST_ZEEBEELASTICSEARCH_URL=http://elasticsearch:7200
+      - SPRING_PROFILES_ACTIVE=identity-auth
       - CAMUNDA_TASKLIST_IDENTITY_BASEURL=http://identity:7084
       - CAMUNDA_TASKLIST_IDENTITY_ISSUER_URL=http://${KEYCLOAK_HOST}:17080/auth/realms/camunda-platform
       - CAMUNDA_TASKLIST_IDENTITY_ISSUER_BACKEND_URL=http://keycloak:17080/auth/realms/camunda-platform
+      - CAMUNDA_TASKLIST_IDENTITY_CLIENTID=tasklist
+      - CAMUNDA_TASKLIST_IDENTITY_CLIENTSECRET=XALaRPl5qwTEItdwCMiPS62nVpKs7dL7
+      - CAMUNDA_TASKLIST_IDENTITY_AUDIENCE=tasklist-api
+      - CAMUNDA_TASKLIST_MULTITENANCY_ENABLED=${MULTI_TENANCY_ENABLED}
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:17080/auth/realms/camunda-platform
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:17080/auth/realms/camunda-platform/protocol/openid-connect/certs
+      - CAMUNDA_TASKLIST_IDENTITY_RESOURCE_PERMISSIONS_ENABLED=${RESOURCE_AUTHORIZATIONS_ENABLED}
+      - management.endpoints.web.exposure.include=health
+      - management.endpoint.health.probes.enabled=true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -O - -q 'http://localhost:9600/actuator/health/readiness'"]
+      interval: 30s
+      timeout: 1s
+      retries: 5
+      start_period: 30s
     volumes:
       - tasklist_tmp:/tmp
     networks:
@@ -85,10 +138,28 @@ services:
       - "7085:8080"
     environment:
       - ZEEBE_CLIENT_BROKER_GATEWAY-ADDRESS=zeebe:27500
+      - ZEEBE_CLIENT_SECURITY_PLAINTEXT=true
+      - ZEEBE_CLIENT_ID=${ZEEBE_CLIENT_ID}
+      - ZEEBE_CLIENT_SECRET=${ZEEBE_CLIENT_SECRET}
+      - ZEEBE_CLIENT_CONFIG_PATH=/tmp/zeebe_auth_cache
+      - ZEEBE_TOKEN_AUDIENCE=zeebe-api
+      - ZEEBE_AUTHORIZATION_SERVER_URL=http://keycloak:17080/auth/realms/camunda-platform/protocol/openid-connect/token
       - CAMUNDA_OPERATE_CLIENT_URL=http://operate:7081
       - CAMUNDA_IDENTITY_ISSUER_URL=http://${KEYCLOAK_HOST}:17080/auth/realms/camunda-platform
       - CAMUNDA_IDENTITY_ISSUER_BACKEND_URL=http://keycloak:17080/auth/realms/camunda-platform
+      - CAMUNDA_IDENTITY_CLIENT_ID=connectors
+      - CAMUNDA_IDENTITY_CLIENT_SECRET=XALaRPl5qwTEItdwCMiPS62nVpKs7dL7
+      - CAMUNDA_IDENTITY_TYPE=KEYCLOAK
+      - CAMUNDA_IDENTITY_AUDIENCE=operate-api
+      - management.endpoints.web.exposure.include=health
+      - management.endpoint.health.probes.enabled=true
     env_file: connector-secrets.txt
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health/readiness"]
+      interval: 30s
+      timeout: 1s
+      retries: 5
+      start_period: 30s
     networks:
       - camunda-platform
     depends_on:
@@ -105,10 +176,28 @@ services:
     ports:
       - "7083:8090"
     environment:
+      - OPTIMIZE_ELASTICSEARCH_HOST=elasticsearch
       - OPTIMIZE_ELASTICSEARCH_HTTP_PORT=7200
+      - SPRING_PROFILES_ACTIVE=ccsm
+      - CAMUNDA_OPTIMIZE_ZEEBE_ENABLED=true
+      - CAMUNDA_OPTIMIZE_ENTERPRISE=false
       - CAMUNDA_OPTIMIZE_IDENTITY_ISSUER_URL=http://${KEYCLOAK_HOST}:17080/auth/realms/camunda-platform
       - CAMUNDA_OPTIMIZE_IDENTITY_ISSUER_BACKEND_URL=http://keycloak:17080/auth/realms/camunda-platform
+      - CAMUNDA_OPTIMIZE_IDENTITY_CLIENTID=optimize
+      - CAMUNDA_OPTIMIZE_IDENTITY_CLIENTSECRET=XALaRPl5qwTEItdwCMiPS62nVpKs7dL7
+      - CAMUNDA_OPTIMIZE_IDENTITY_AUDIENCE=optimize-api
       - CAMUNDA_OPTIMIZE_IDENTITY_BASE_URL=http://identity:7084
+      - CAMUNDA_OPTIMIZE_MULTITENANCY_ENABLED=${MULTI_TENANCY_ENABLED}
+      - CAMUNDA_OPTIMIZE_SECURITY_AUTH_COOKIE_SAME_SITE_ENABLED=false
+      - CAMUNDA_OPTIMIZE_UI_LOGOUT_HIDDEN=true
+      - management.endpoints.web.exposure.include=health
+      - management.endpoint.health.probes.enabled=true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8090/api/readyz"]
+      interval: 30s
+      timeout: 1s
+      retries: 5
+      start_period: 30s
     volumes:
       - "./.optimize/environment-config.yaml:/optimize/config/environment-config.yaml"
     restart: on-failure
@@ -128,15 +217,55 @@ services:
       - "7084:8084"
     environment:
       SERVER_PORT: 8084
+      IDENTITY_RETRY_DELAY_SECONDS: 30
       IDENTITY_URL: http://${HOST}:7084
       KEYCLOAK_URL: http://keycloak:17080/auth
       IDENTITY_AUTH_PROVIDER_ISSUER_URL: http://${KEYCLOAK_HOST}:17080/auth/realms/camunda-platform
       IDENTITY_AUTH_PROVIDER_BACKEND_URL: http://keycloak:17080/auth/realms/camunda-platform
+      IDENTITY_DATABASE_HOST: postgres
+      IDENTITY_DATABASE_PORT: 5432
+      IDENTITY_DATABASE_NAME: bitnami_keycloak
+      IDENTITY_DATABASE_USERNAME: bn_keycloak
+      IDENTITY_DATABASE_PASSWORD: "#3]O?4RGj)DE7Z!9SA5"
+      KEYCLOAK_INIT_OPERATE_SECRET: XALaRPl5qwTEItdwCMiPS62nVpKs7dL7
       KEYCLOAK_INIT_OPERATE_ROOT_URL: http://${HOST}:7081
+      KEYCLOAK_INIT_TASKLIST_SECRET: XALaRPl5qwTEItdwCMiPS62nVpKs7dL7
       KEYCLOAK_INIT_TASKLIST_ROOT_URL: http://${HOST}:7082
+      KEYCLOAK_INIT_OPTIMIZE_SECRET: XALaRPl5qwTEItdwCMiPS62nVpKs7dL7
       KEYCLOAK_INIT_OPTIMIZE_ROOT_URL: http://${HOST}:7083
       KEYCLOAK_INIT_WEBMODELER_ROOT_URL: http://${HOST}:7070
+      KEYCLOAK_INIT_CONNECTORS_SECRET: XALaRPl5qwTEItdwCMiPS62nVpKs7dL7
       KEYCLOAK_INIT_CONNECTORS_ROOT_URL: http://${HOST}:7085
+      KEYCLOAK_INIT_ZEEBE_NAME: zeebe
+      KEYCLOAK_USERS_0_USERNAME: "demo"
+      KEYCLOAK_USERS_0_PASSWORD: "demo"
+      KEYCLOAK_USERS_0_FIRST_NAME: "demo"
+      KEYCLOAK_USERS_0_EMAIL: "demo@acme.com"
+      KEYCLOAK_USERS_0_ROLES_0: "Identity"
+      KEYCLOAK_USERS_0_ROLES_1: "Optimize"
+      KEYCLOAK_USERS_0_ROLES_2: "Operate"
+      KEYCLOAK_USERS_0_ROLES_3: "Tasklist"
+      KEYCLOAK_USERS_0_ROLES_4: "Web Modeler"
+      KEYCLOAK_USERS_0_ROLES_5: "Web Modeler Admin"
+      KEYCLOAK_USERS_0_ROLES_6: "Zeebe"
+      KEYCLOAK_CLIENTS_0_NAME: zeebe
+      KEYCLOAK_CLIENTS_0_ID: ${ZEEBE_CLIENT_ID}
+      KEYCLOAK_CLIENTS_0_SECRET: ${ZEEBE_CLIENT_SECRET}
+      KEYCLOAK_CLIENTS_0_TYPE: M2M
+      KEYCLOAK_CLIENTS_0_PERMISSIONS_0_RESOURCE_SERVER_ID: zeebe-api
+      KEYCLOAK_CLIENTS_0_PERMISSIONS_0_DEFINITION: write:*
+      KEYCLOAK_CLIENTS_0_PERMISSIONS_1_RESOURCE_SERVER_ID: operate-api
+      KEYCLOAK_CLIENTS_0_PERMISSIONS_1_DEFINITION: write:*
+      KEYCLOAK_CLIENTS_0_PERMISSIONS_2_RESOURCE_SERVER_ID: tasklist-api
+      KEYCLOAK_CLIENTS_0_PERMISSIONS_2_DEFINITION: write:*
+      KEYCLOAK_CLIENTS_0_PERMISSIONS_3_RESOURCE_SERVER_ID: optimize-api
+      KEYCLOAK_CLIENTS_0_PERMISSIONS_3_DEFINITION: write:*
+      KEYCLOAK_CLIENTS_0_PERMISSIONS_4_RESOURCE_SERVER_ID: tasklist-api
+      KEYCLOAK_CLIENTS_0_PERMISSIONS_4_DEFINITION: read:*
+      KEYCLOAK_CLIENTS_0_PERMISSIONS_5_RESOURCE_SERVER_ID: operate-api
+      KEYCLOAK_CLIENTS_0_PERMISSIONS_5_DEFINITION: read:*
+      MULTITENANCY_ENABLED: ${MULTI_TENANCY_ENABLED}
+      RESOURCE_PERMISSIONS_ENABLED: ${RESOURCE_AUTHORIZATIONS_ENABLED}
     healthcheck:
       test: ["CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:7084/actuator/health"]
       interval: 5s
