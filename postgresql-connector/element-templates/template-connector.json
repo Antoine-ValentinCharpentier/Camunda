@@ -1,0 +1,209 @@
+{
+    "$schema": "https://unpkg.com/@camunda/zeebe-element-templates-json-schema/resources/schema.json",
+    "name": "Postgresql Connector",
+    "id": "com.sopra.cec.PostgresqlConnectorTemplate.v1",
+    "version": 1743874291490,
+    "appliesTo": [
+      "bpmn:Task"
+    ],
+    "groups": [
+      {
+        "id": "operation",
+        "label": "Operation"
+      },
+      {
+        "id": "equipment",
+        "label": "Equipment Details"
+      },
+      {
+        "id": "output",
+        "label": "Output mapping"
+      }
+    ],
+    "properties": [
+     {
+        "value" : "com.sopra.cec:postgresql:1",
+        "binding" : {
+            "property" : "type",
+            "type" : "zeebe:taskDefinition"
+        },
+        "type" : "Hidden"
+      },
+      {
+        "id": "operation",
+        "label": "Operation",
+        "optional": false,
+        "value": "SELECT",
+        "constraints": {
+          "notEmpty": true
+        },
+        "group": "operation",
+        "binding": {
+          "name": "operation",
+          "type": "zeebe:input"
+        },
+        "type": "Dropdown",
+        "choices": [
+          {
+            "name": "POST",
+            "value": "POST"
+          },
+          {
+            "name": "SELECT",
+            "value": "SELECT"
+          },
+          {
+            "name": "DELETE",
+            "value": "DELETE"
+          },
+          {
+            "name": "PUT",
+            "value": "PUT"
+          }
+        ]
+      },
+      {
+        "id": "id",
+        "label": "ID Device",
+        "value": "",
+        "constraints": {
+          "notEmpty": true
+        },
+        "group": "equipment",
+        "binding": {
+          "name": "equipment.id",
+          "type": "zeebe:input"
+        }
+      },
+      {
+        "id": "ip",
+        "label": "IP",
+        "value": "",
+        "constraints": {
+          "notEmpty": true,
+          "pattern": {
+            "value": "^\\d{1,3}(\\.\\d{1,3}){3}$",
+            "message": "Must be an IP adress"
+          }
+        },
+        "group": "equipment",
+        "binding": {
+          "name": "equipment.ip",
+          "type": "zeebe:input"
+        },
+        "type": "String"
+      },
+      {
+        "id": "type",
+        "label": "Type",
+        "optional": false,
+        "value": "Firewall",
+        "constraints": {
+          "notEmpty": true
+        },
+        "group": "equipment",
+        "binding": {
+          "name": "equipment.type",
+          "type": "zeebe:input"
+        },
+        "type": "Dropdown",
+        "choices": [
+          {
+            "name": "Firewall",
+            "value": "Firewall"
+          },
+          {
+            "name": "Router",
+            "value": "Router"
+          },
+          {
+            "name": "Switch manageable",
+            "value": "Switch manageable"
+          },
+          {
+            "name": "Modem",
+            "value": "Modem"
+          },
+          {
+            "name": "Network Server",
+            "value": "Network Server"
+          },
+          {
+            "name": "Computer",
+            "value": "Computer"
+          }
+        ]
+      },
+      {
+        "id": "location",
+        "label": "Location",
+        "value": "",
+        "constraints": {},
+        "group": "equipment",
+        "binding": {
+          "name": "equipment.location",
+          "type": "zeebe:input"
+        },
+        "type": "String"
+      },
+      {
+        "id": "status",
+        "label": "Status",
+        "value": "Inactive",
+        "constraints": {
+          "notEmpty": true
+        },
+        "group": "equipment",
+        "binding": {
+          "name": "equipment.status",
+          "type": "zeebe:input"
+        },
+        "type": "Dropdown",
+        "choices": [
+          {
+            "name": "Active",
+            "value": "Active"
+          },
+          {
+            "name": "Inactive",
+            "value": "Inactive"
+          },
+          {
+            "name": "Faulty",
+            "value": "Faulty"
+          },
+          {
+            "name": "Under Maintenance",
+            "value": "Under Maintenance"
+          },
+          {
+            "name": "Out of Service",
+            "value": "Out of Service"
+          }
+        ]
+      },
+      {
+        "id": "resultVariable",
+        "label": "Result variable",
+        "description": "Name of variable to store the response in",
+        "group": "output",
+        "binding": {
+          "key": "resultVariable",
+          "type": "zeebe:taskHeader"
+        },
+        "type": "String"
+      },
+      {
+        "id": "resultExpression",
+        "label": "Result expression",
+        "description": "Expression to map the response into process variables",
+        "feel": "required",
+        "group": "output",
+        "binding": {
+          "key": "resultExpression",
+          "type": "zeebe:taskHeader"
+        },
+        "type": "Text"
+      }
+    ]
+  }
