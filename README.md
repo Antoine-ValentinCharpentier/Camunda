@@ -1,31 +1,147 @@
-# Camunda
-OAuth token URL : http://127.0.0.1:18080/auth/realms/camunda-platform/protocol/openid-connect/token  
+#!/usr/bin/env bash
+set -euo pipefail
 
-> Les modifications effectuées
+# Usage: ./check-secret.sh <namespace> <secret-name> "key1 key2 ..."
 
-existingSecretKey: console-secret  
-existingSecret: identity-secret-for-components  
-global > identity > auth > identity > Hide existing secret  
-les replicas de elastic, gateway, zeebe à fixer à 1  
+if [ $# -ne 3 ]; then
+  echo "Usage: $0 <namespace> <secret-name> \"key1 key2 ...\""
+  exit 1
+fi
 
-> Les commandes
+NAMESPACE="$1"
+SECRET_NAME="$2"
+EXPECTED_KEYS="$3"
 
-kind delete cluster -n camunda-platform-local-8.6  
-kind create cluster --name camunda-platform-local-8.6  
+# Vérifie si le secret existe
+if ! kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+  echo "❌ Secret '$SECRET_NAME' not found in namespace '$NAMESPACE'"
+  exit 1
+fi
 
-helm repo add camunda https://helm.camunda.io/  
-helm repo update  
+# Récupère les clés du secret (jsonpath donne une liste séparée par espaces)
+ACTUAL_KEYS=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath='{.data}' | sed 's/map\[//;s/\]//g' | tr ' ' '\n')
 
-kubectl apply -f secrets.yaml  
-helm install camunda-platform camunda/camunda-platform   --version 11.1.1  -f ./values2.yml  
+MISSING=()
+for key in $EXPECTED_KEYS; do
+  if ! echo "$ACTUAL_KEYS" | grep -qx "$key"; then
+    MISSING+=("$key")
+  fi
+done
 
-kubectl get pods  
+if [ ${#MISSING[@]} -eq 0 ]; then
+  echo "✅ Secret '$SECRET_NAME' in namespace '$NAMESPACE' contains all required keys"
+else
+  echo "⚠️ Secret '$SECRET_NAME' in namespace '$NAMESPACE' is missing keys:"
+  for k in "${MISSING[@]}"; do
+    echo "  - $k"
+  done
+  exit 1
+fi
 
-> Attendre 16 min
 
-> Ouvertures des ports
+≠=============
+if ! kubectl get secret postgres-secret >/dev/null 2>&1; then
+  kubectl create secret generic postgres-secret \
+    --from-literal=username=myuser \
+    --from-literal=password=mypassword
+fi
 
-kubectl port-forward svc/camunda-platform-zeebe-gateway 26500:26500  
-kubectl port-forward svc/camunda-platform-operate  8081:80  
-kubectl port-forward svc/camunda-platform-keycloak 18080:80  
-kubectl port-forward svc/camunda-platform-identity 8080:80   
+kubectl apply -f postgres.yaml
+
+
+========
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-initdb
+data:
+  init.sql: |
+    CREATE DATABASE dbcambf;
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'myuser') THEN
+        CREATE ROLE myuser LOGIN PASSWORD 'mypassword';
+      END IF;
+    END
+    $$;
+    GRANT ALL PRIVILEGES ON DATABASE dbcambf TO myuser;
+    DROP ROLE IF EXISTS postgres;
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-initdb
+data:
+  init.sql: |
+    -- On s'assure que l'utilisateur défini par POSTGRES_USER est bien superadmin
+    ALTER ROLE "${POSTGRES_USER}" WITH SUPERUSER;
+    -- On supprime l'utilisateur postgres par défaut
+    DROP ROLE IF EXISTS postgres;
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      name: postgres
+  selector:
+    app: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: postgres
+  replicas: 1   # un seul Pod PostgreSQL
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            - name: POSTGRES_DB
+              value: dbcambf
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d/
+      volumes:
+        - name: initdb
+          configMap:
+            name: postgres-initdb
+            items:
+              - key: init.sql
+                path: init.sql
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: ceph-block   # ton StorageClass Ceph
+        resources:
+          requests:
+            storage: 10Gi
