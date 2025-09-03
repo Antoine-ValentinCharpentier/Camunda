@@ -1,3 +1,27 @@
+
+# Définition des informations de connexion au Keycloak
+
+...
+
+
+Pour faciliter le déploiement de BPMN via le Web Modeler, la charte Camunda propose des propriétés à renseigner. Cela permet d’éviter à l’utilisateur de devoir les saisir à chaque déploiement d’un BPMN via l’interface du Web Modeler.
+
+Une grande partie de cette configuration a déjà été réalisée dans le fichier fourni. Il reste cependant à y renseigner l’URL du token endpoint de Keycloak pour le realm Camunda qui sera créé.
+
+Veuillez l’indiquer à cet emplacement :
+
+```
+webModeler:
+  restapi:
+    clusters:
+      - oauth:
+          url: https://<KEYCLOAK_HOST>/realms/camunda/protocol/openid-connect/token    # le token URL
+```
+
+# Définitions des informations de connexion au Postgresql
+
+Nous allons 
+
 # Configuration des secrets d'identity
 
 Il est fortement recommandé de pré-créer les secrets d’identité utilisés par les différents composants de Camunda. Cela permet d’éviter que ces secrets soient automatiquement régénérés lors d’une future mise à jour avec helm upgrade.
