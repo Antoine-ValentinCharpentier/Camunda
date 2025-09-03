@@ -1,0 +1,48 @@
+# Configuration de l'utilisateur
+
+Nous allons maintenant configurer le premier utilisateur de Camunda, qui servira à accéder aux différentes interfaces.
+Vous pouvez personnaliser son nom d’utilisateur et son adresse e-mail en modifiant le fichier de configuration aux clés suivantes :
+
+```
+identity:
+  firstUser:
+    username: demo
+    email: demo@example.org
+```
+
+Pour définir le mot de passe de cet utilisateur, il est recommandé d’utiliser un secret Kubernetes nommé firstuser, contenant la clé password.
+
+Vous pouvez le créer avec la commande suivante, en remplaçant `<CHANGE_ME>` par le mot de passe de votre choix :
+
+```
+kubectl create secret generic firstuser \
+  --from-literal=password=<CHANGE_ME> \
+  -n <NAMESPACE_CAMUNDA>
+```
+Vous n’avez pas besoin de modifier le fichier de configuration pour référencer ce secret, car cela a déjà été pris en compte dans le fichier values.yaml fourni.
+
+# Déploiement de Camunda
+
+Nous allons maintenant voir comment exploiter le fichier de configuration que nous avons précédemment créé et modifié, nommé values.yml.
+
+Ouvrez un terminal disposant de kubectl et Helm, déjà connecté à votre cluster Kubernetes.
+
+Placez-vous dans le répertoire où se trouve le fichier de configuration précedemment modifié.
+
+Ajoutez le dépôt Helm officiel de Camunda.
+```
+helm repo add camunda https://helm.camunda.io
+helm repo update
+```
+Lancez l’installation en spécifiant le namespace dans lequel le déploiement sera effectué.
+```
+helm install camunda camunda/camunda-platform \ 
+  --namespace <NAMESPACE_CAMUNDA> \ 
+  --version 12.0.1 \ 
+  -f values.yml
+```
+# Vérifier le déploiement
+
+Vérifiez que tous les pods sont prêts dans le namespace de Camunda.
+
+kubectl get pods -n <NAMESPACE_CAMUNDA>
