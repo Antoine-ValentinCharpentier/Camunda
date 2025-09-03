@@ -1,4 +1,27 @@
-# Configuration de l'utilisateur
+# Configuration des secrets d'identity
+
+Il est fortement recommandé de pré-créer les secrets d’identité utilisés par les différents composants de Camunda. Cela permet d’éviter que ces secrets soient automatiquement régénérés lors d’une future mise à jour avec helm upgrade.
+
+Pour ce faire, vous devez créer un secret nommé identity-secret-for-components, contenant les clés attendues par chaque composant (mentionnées dans l'exemple de commande). Vous êtes libre de définir les valeurs des secrets (par exemple, des chaînes aléatoires sécurisées).
+
+Exemple de commande pour créer ce secret dans le namespace :
+
+//TODO : update les clés 
+```
+kubectl create secret generic identity-secret-for-components \
+  --from-literal=operate-secret=VeryLongString \
+  --from-literal=tasklist-secret=VeryLongString \
+  --from-literal=optimize-secret=VeryLongString \
+  --from-literal=connectors-secret=VeryLongString \
+  --from-literal=console-secret=VeryLongString \
+  --from-literal=keycloak-secret=VeryLongString \
+  --from-literal=zeebe-secret=VeryLongString \
+  -n <NAMESPACE_CAMUNDA>
+```
+
+Aucune modification du fichier de configuration n’est nécessaire, car ce secret est déjà référencé dans le fichier fourni.
+
+# Configuration de l’utilisateur par défaut
 
 Nous allons maintenant configurer le premier utilisateur de Camunda, qui servira à accéder aux différentes interfaces.
 Vous pouvez personnaliser son nom d’utilisateur et son adresse e-mail en modifiant le fichier de configuration aux clés suivantes :
