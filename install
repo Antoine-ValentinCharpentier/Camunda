@@ -20,7 +20,28 @@ webModeler:
 
 # Définitions des informations de connexion au Postgresql
 
-Nous allons 
+Nous allons voir comment configurer la connexion à la base de données PostgreSQL utilisée par le Camunda Web Modeler, afin de permettre au modeleur de stocker et récupérer les définitions de processus BPMN directement dans la base de données. 
+
+À noter que si vous ne disposez pas d’un PostgreSQL dédié pour Camunda, nous vous proposons, en Annexe 3, une ressource pour l’installer directement sur Kubernetes.
+
+Pour ce faire, vous pouvez configurer les informations de connexions dans la section webModeler.restapi.externalDatabase du fichier de configuration.
+
+```
+webModeler:
+  restapi:
+    externalDatabase:
+      host: "postgres.example.com"        # L’hôte de votre instance PostgreSQL 
+      port: 5432                          # Le port PostgreSQL (par défaut 5432)
+      database: "web-modeler"             # Le nom de la base de données
+      user: "webmodeler_user"             # L’utilisateur de la base de données
+```
+
+Vous verrez à cet emplacement la référence à un Secret postgresql-secret, utilisé pour stocker le mot de passe de l’utilisateur chargé d’interagir avec la base de données, sous la clé password. Vous le pouvez le créer à l'aide de la commande :
+```
+kubectl create secret generic postgresql-secret \
+  --from-literal=password=VeryLongString \
+  -n <NAMESPACE_CAMUNDA>
+```
 
 # Configuration des secrets d'identity
 
@@ -40,8 +61,10 @@ kubectl create secret generic identity-secret-for-components \
   --from-literal=console-secret=VeryLongString \
   --from-literal=keycloak-secret=VeryLongString \
   --from-literal=zeebe-secret=VeryLongString \
+  --from-literal=smtp-password=VeryLongString \
   -n <NAMESPACE_CAMUNDA>
 ```
+À noter que le smtp-password n’est en réalité pas utilisé par le Web Modeler. Ainsi, la valeur renseignée n’a pas d’importance pour le déploiement.
 
 Aucune modification du fichier de configuration n’est nécessaire, car ce secret est déjà référencé dans le fichier fourni.
 
@@ -93,3 +116,31 @@ helm install camunda camunda/camunda-platform \
 Vérifiez que tous les pods sont prêts dans le namespace de Camunda.
 
 kubectl get pods -n <NAMESPACE_CAMUNDA>
+
+# Annexe n°3
+
+Si vous souhaitez installer un PostgreSQL dédié au Web Modeler dans le namespace de Camunda, vous pouvez vous référer à cette annexe.
+
+Il vous faudra créer un Secret nommé postgresql-secret contenant trois clés :
+```
+kubectl create secret generic firstuser \
+  --from-literal=username=<CHANGE_ME_NOM_DE_L_UTILISATEUR> \
+  --from-literal=password=<CHANGE_ME_MOT_DE_PASSE> \
+  --from-literal=database=<CHANGE_ME_NOM_BASE_DE_DONNEES> \
+  -n <NAMESPACE_CAMUNDA>
+```
+
+Vous devez enregistrer le manifeste suivant dans le fichier postgresql.yml. Ce dernier a été configuré pour utiliser le Secret précédemment créé et exploiter des PersistentVolumeClaims Ceph‑Block.
+
+//TODO
+```
+
+```
+
+À noter que si vous suivez cette étape, vous n’aurez pas besoin de créer un nouveau secret pour la connexion du Web Modeler à PostgreSQL, car il utilisera le même Secret créé dans cette annexe.
+
+De plus, les informations de connexion du Web Modeler pour accéder à ce PostgreSQL sont les suivantes :
+- Host : postgresql-0
+- Port : 5432
+- Database : la valeur de la clé database dans le Secret postgresql-secret
+- User : la valeur de la clé database dans le Secret postgresql-secret
