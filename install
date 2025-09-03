@@ -42,6 +42,7 @@ kubectl create secret generic postgresql-secret \
   --from-literal=password=VeryLongString \
   -n <NAMESPACE_CAMUNDA>
 ```
+Il n'est donc pas nécessaire de modifier le fichier de configuration pour l'inclure.
 
 # Configuration des secrets d'identity
 
